@@ -25,6 +25,7 @@
 //
 
 #import <Foundation/Foundation.h>
+@class EKEventStore;
 
 @interface ClusterPrePermissions : NSObject
 
@@ -79,6 +80,14 @@ typedef void (^ClusterPrePermissionCompletionHandler)(BOOL hasPermission,
                                   message:(NSString *)message
                           denyButtonTitle:(NSString *)denyButtonTitle
                          grantButtonTitle:(NSString *)grantButtonTitle
+                        completionHandler:(ClusterPrePermissionCompletionHandler)completionHandler;
+
+- (void) showCalendarPermissionsWithTitle:(NSString *)requestTitle
+                                  message:(NSString *)message
+                          denyButtonTitle:(NSString *)denyButtonTitle
+                         grantButtonTitle:(NSString *)grantButtonTitle
+									store:(EKEventStore **)store
+							   entityType:(NSUInteger)entityType
                         completionHandler:(ClusterPrePermissionCompletionHandler)completionHandler;
 
 @end
