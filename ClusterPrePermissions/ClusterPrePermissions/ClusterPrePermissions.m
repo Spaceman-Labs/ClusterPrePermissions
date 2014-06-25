@@ -26,10 +26,23 @@
 
 #import "ClusterPrePermissions.h"
 
-#import <AddressBook/AddressBook.h>
-#import <AssetsLibrary/AssetsLibrary.h>
-#import <CoreLocation/CoreLocation.h>
+@import AddressBook;
+@import AssetsLibrary;
+@import CoreLocation;
 @import EventKit;
+
+NSString * const clusterPrePermissionsWillDisplayPrePermissionRequest = @"clusterPrePermissionsWillDisplayPrePermissionRequest";
+NSString * const clusterPrePermissionsDidDisplayPrePermissionRequest = @"clusterPrePermissionsDidDisplayPrePermissionRequest";
+NSString * const clusterPrePermissionsWillDisplayPermissionRequest = @"clusterPrePermissionsWillDisplayPermissionRequest";
+NSString * const clusterPrePermissionsDidDisplayPermissionRequest = @"clusterPrePermissionsDidDisplayPermissionRequest";
+
+NSString * const clusterPermissionTypeKey = @"clusterPermissionTypeKey";
+
+NSString * const clusterPermissionTypePhoto = @"clusterPermissionTypePhoto";
+NSString * const clusterPermissionTypeContacts = @"clusterPermissionTypeContacts";
+NSString * const clusterPermissionTypeLocation = @"clusterPermissionTypeLocation";
+NSString * const clusterPermissionTypeCalendar = @"clusterPermissionTypeCalendar";
+
 
 @interface ClusterPrePermissions () <UIAlertViewDelegate, CLLocationManagerDelegate>
 
@@ -83,6 +96,8 @@ static ClusterPrePermissions *__sharedInstance;
     }
     ALAuthorizationStatus status = [ALAssetsLibrary authorizationStatus];
     if (status == ALAuthorizationStatusNotDetermined) {
+		
+		[self postWillDisplayPrePermissions:clusterPermissionTypePhoto];
         self.photoPermissionCompletionHandler = completionHandler;
         self.prePhotoPermissionAlertView = [[UIAlertView alloc] initWithTitle:requestTitle
                                                                       message:message
@@ -102,6 +117,8 @@ static ClusterPrePermissions *__sharedInstance;
 
 - (void) showActualPhotoPermissionAlert
 {
+	[self postWillDisplayPermissions:clusterPermissionTypePhoto];
+	
     ALAssetsLibrary *library = [[ALAssetsLibrary alloc] init];
     [library enumerateGroupsWithTypes:ALAssetsGroupSavedPhotos usingBlock:^(ALAssetsGroup *group, BOOL *stop) {
         // Got access! Show login
@@ -116,6 +133,8 @@ static ClusterPrePermissions *__sharedInstance;
 
 - (void) firePhotoPermissionCompletionHandler
 {
+	[self postDidDisplayPermissions:clusterPermissionTypePhoto];
+	
     ALAuthorizationStatus status = [ALAssetsLibrary authorizationStatus];
     if (self.photoPermissionCompletionHandler) {
         ClusterDialogResult userDialogResult = ClusterDialogResultGranted;
@@ -161,6 +180,7 @@ static ClusterPrePermissions *__sharedInstance;
     }
     ABAuthorizationStatus status = ABAddressBookGetAuthorizationStatus();
     if (status == kABAuthorizationStatusNotDetermined) {
+		[self postWillDisplayPrePermissions:clusterPermissionTypeContacts];
         self.contactPermissionCompletionHandler = completionHandler;
         self.preContactPermissionAlertView = [[UIAlertView alloc] initWithTitle:requestTitle
                                                                         message:message
@@ -180,6 +200,8 @@ static ClusterPrePermissions *__sharedInstance;
 
 - (void) showActualContactPermissionAlert
 {
+	[self postWillDisplayPermissions:clusterPermissionTypeContacts];
+	
     CFErrorRef error = nil;
     ABAddressBookRef addressBook = ABAddressBookCreateWithOptions(nil, &error);
     ABAddressBookRequestAccessWithCompletion(addressBook, ^(bool granted, CFErrorRef error) {
@@ -192,6 +214,8 @@ static ClusterPrePermissions *__sharedInstance;
 
 - (void) fireContactPermissionCompletionHandler
 {
+	[self postDidDisplayPermissions:clusterPermissionTypeContacts];
+	
     ABAuthorizationStatus status = ABAddressBookGetAuthorizationStatus();
     if (self.contactPermissionCompletionHandler) {
         ClusterDialogResult userDialogResult = ClusterDialogResultGranted;
@@ -237,6 +261,8 @@ static ClusterPrePermissions *__sharedInstance;
     }
     CLAuthorizationStatus status = [CLLocationManager authorizationStatus];
     if (status == kCLAuthorizationStatusNotDetermined) {
+		[self postWillDisplayPrePermissions:clusterPermissionTypeLocation];
+		
         self.locationPermissionCompletionHandler = completionHandler;
         self.preLocationPermissionAlertView = [[UIAlertView alloc] initWithTitle:requestTitle
                                                                          message:message
@@ -256,6 +282,7 @@ static ClusterPrePermissions *__sharedInstance;
 
 - (void) showActualLocationPermissionAlert
 {
+	[self postWillDisplayPermissions:clusterPermissionTypeLocation];
     self.locationManager = [[CLLocationManager alloc] init];
     self.locationManager.delegate = self;
     [self.locationManager startUpdatingLocation];
@@ -264,6 +291,8 @@ static ClusterPrePermissions *__sharedInstance;
 
 - (void) fireLocationPermissionCompletionHandler
 {
+	[self postDidDisplayPermissions:clusterPermissionTypeLocation];
+	
     CLAuthorizationStatus status = [CLLocationManager authorizationStatus];
     if (self.locationPermissionCompletionHandler) {
         ClusterDialogResult userDialogResult = ClusterDialogResultGranted;
@@ -325,6 +354,7 @@ static ClusterPrePermissions *__sharedInstance;
 	self.eventEntityType = entityType;
 	EKAuthorizationStatus status = [EKEventStore authorizationStatusForEntityType:entityType];
     if (status == EKAuthorizationStatusNotDetermined) {
+		[self postWillDisplayPrePermissions:clusterPermissionTypeCalendar];
         self.calendarPermissionCompletionHandler = completionHandler;
         self.preCalendarPermissionAlertView = [[UIAlertView alloc] initWithTitle:requestTitle
                                                                       message:message
@@ -343,6 +373,8 @@ static ClusterPrePermissions *__sharedInstance;
 
 - (void) showActualCalendarPermissionAlert
 {
+	[self postWillDisplayPermissions:clusterPermissionTypeCalendar];
+	
     [self.eventStore requestAccessToEntityType:EKEntityTypeEvent completion:^(BOOL granted, NSError *error) {
 		dispatch_async(dispatch_get_main_queue(), ^{
             [self fireCalendarPermissionCompletionHandler];
@@ -352,6 +384,8 @@ static ClusterPrePermissions *__sharedInstance;
 
 - (void) fireCalendarPermissionCompletionHandler
 {
+	[self postDidDisplayPermissions:clusterPermissionTypeCalendar];
+	
     EKAuthorizationStatus status = [EKEventStore authorizationStatusForEntityType:self.eventEntityType];
     if (self.calendarPermissionCompletionHandler) {
         ClusterDialogResult userDialogResult = ClusterDialogResultGranted;
@@ -376,6 +410,33 @@ static ClusterPrePermissions *__sharedInstance;
     }
 }
 
+#pragma mark - Notifications
+
+- (void) postWillDisplayPrePermissions:(NSString *)type
+{
+	[self postNotification:clusterPrePermissionsWillDisplayPrePermissionRequest type:type];
+}
+
+- (void) postDidDisplayPrePermissions:(NSString *)type
+{
+	[self postNotification:clusterPrePermissionsDidDisplayPrePermissionRequest type:type];
+}
+
+- (void) postWillDisplayPermissions:(NSString *)type
+{
+	[self postNotification:clusterPrePermissionsWillDisplayPermissionRequest type:type];
+}
+
+- (void) postDidDisplayPermissions:(NSString *)type
+{
+	[self postNotification:clusterPrePermissionsDidDisplayPermissionRequest type:type];
+}
+
+- (void) postNotification:(NSString *)notification type:(NSString *)type
+{
+	[[NSNotificationCenter defaultCenter] postNotificationName:notification object:self userInfo:@{ clusterPermissionTypeKey : type }];
+}
+
 
 #pragma mark - UIAlertViewDelegate
 
@@ -383,6 +444,7 @@ static ClusterPrePermissions *__sharedInstance;
 - (void) alertView:(UIAlertView *)alertView clickedButtonAtIndex:(NSInteger)buttonIndex
 {
     if (alertView == self.prePhotoPermissionAlertView) {
+		[self postDidDisplayPrePermissions:clusterPermissionTypePhoto];
         if (buttonIndex == alertView.cancelButtonIndex) {
             // User said NO, jerk.
             [self firePhotoPermissionCompletionHandler];
@@ -393,6 +455,7 @@ static ClusterPrePermissions *__sharedInstance;
 
         self.prePhotoPermissionAlertView = nil;
     } else if (alertView == self.preContactPermissionAlertView) {
+		[self postDidDisplayPrePermissions:clusterPermissionTypeContacts];
         if (buttonIndex == alertView.cancelButtonIndex) {
             // User said NO, that jerk.
             [self fireContactPermissionCompletionHandler];
@@ -401,6 +464,7 @@ static ClusterPrePermissions *__sharedInstance;
             [self showActualContactPermissionAlert];
         }
     } else if (alertView == self.preLocationPermissionAlertView) {
+		[self postDidDisplayPrePermissions:clusterPermissionTypeLocation];
         if (buttonIndex == alertView.cancelButtonIndex) {
             // User said NO, that jerk.
             [self fireLocationPermissionCompletionHandler];
@@ -409,6 +473,7 @@ static ClusterPrePermissions *__sharedInstance;
             [self showActualLocationPermissionAlert];
         }
     } else if (alertView == self.preCalendarPermissionAlertView) {
+		[self postDidDisplayPrePermissions:clusterPermissionTypeCalendar];
 		if (buttonIndex == alertView.cancelButtonIndex) {
             // User said NO, that jerk.
             [self fireCalendarPermissionCompletionHandler];

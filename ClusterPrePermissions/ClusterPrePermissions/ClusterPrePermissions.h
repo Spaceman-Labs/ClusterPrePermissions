@@ -29,6 +29,19 @@
 
 @interface ClusterPrePermissions : NSObject
 
+extern NSString * const clusterPrePermissionsWillDisplayPrePermissionRequest;
+extern NSString * const clusterPrePermissionsDidDisplayPrePermissionRequest;
+extern NSString * const clusterPrePermissionsWillDisplayPermissionRequest;
+extern NSString * const clusterPrePermissionsDidDisplayPermissionRequest;
+
+extern NSString * const clusterPermissionTypeKey;
+
+extern NSString * const clusterPermissionTypePhoto;
+extern NSString * const clusterPermissionTypeContacts;
+extern NSString * const clusterPermissionTypeLocation;
+extern NSString * const clusterPermissionTypeCalendar;
+
+
 /**
  * A general descriptor for the possible outcomes of a dialog.
  */
