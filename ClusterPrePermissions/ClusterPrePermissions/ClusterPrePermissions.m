@@ -283,9 +283,21 @@ static ClusterPrePermissions *__sharedInstance;
 - (void) showActualLocationPermissionAlert
 {
 	[self postWillDisplayPermissions:clusterPermissionTypeLocation];
-    self.locationManager = [[CLLocationManager alloc] init];
-    self.locationManager.delegate = self;
-    [self.locationManager startUpdatingLocation];
+
+	self.locationManager = [[CLLocationManager alloc] init];
+	self.locationManager.delegate = self;
+	
+#ifdef __IPHONE_8_0
+	
+	if ([self.locationManager respondsToSelector:@selector(requestAlwaysAuthorization)]) {
+		[self.locationManager requestAlwaysAuthorization];
+	} else {
+		[self.locationManager startUpdatingLocation];
+	}
+#else
+	[self.locationManager startUpdatingLocation];
+#endif
+	
 }
 
 
